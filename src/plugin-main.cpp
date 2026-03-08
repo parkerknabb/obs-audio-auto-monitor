@@ -4,9 +4,10 @@
  * OBS Studio Plugin: Auto Monitor Only
  *
  * Automatically sets the audio monitoring type of every new audio source
- * to OBS_MONITORING_TYPE_MONITOR_ONLY ("Monitor only (mute output)").
+ * to either Monitor Only or Monitor and Output, as configured.
  *
- * Tools → "Auto Monitor Only" opens a dialog with a checkbox to enable/disable.
+ * Tools → "Auto Monitor Only" opens a dialog with a checkbox to enable/disable
+ * and a dropdown to select the monitoring mode.
  * State persists in OBS global config across restarts.
  */
 
@@ -19,6 +20,7 @@
 
 #include <QDialog>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -29,15 +31,18 @@ OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("auto-monitor-only", "en-US")
 
 #define PLUGIN_NAME    "Auto Monitor Only"
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.3.0"
 #define CONFIG_SECTION "AutoMonitorOnly"
 #define CONFIG_KEY     "Enabled"
+#define CONFIG_KEY_MODE "Mode"
 
 /* --------------------------------------------------------------------------
- * Enabled state
+ * State
  * -------------------------------------------------------------------------- */
 
 static bool g_enabled = true;
+/* 0 = Monitor Only (mute output), 1 = Monitor and Output */
+static int g_mode = 0;
 
 static config_t *get_config()
 {
@@ -58,13 +63,25 @@ static bool load_enabled()
 	return config_get_bool(cfg, CONFIG_SECTION, CONFIG_KEY);
 }
 
-static void save_enabled(bool enabled)
+static int load_mode()
+{
+	config_t *cfg = get_config();
+	if (!cfg)
+		return 0;
+
+	config_set_default_int(cfg, CONFIG_SECTION, CONFIG_KEY_MODE, 0);
+	int val = (int)config_get_int(cfg, CONFIG_SECTION, CONFIG_KEY_MODE);
+	return (val == 1) ? 1 : 0;
+}
+
+static void save_settings(bool enabled, int mode)
 {
 	config_t *cfg = get_config();
 	if (!cfg)
 		return;
 
 	config_set_bool(cfg, CONFIG_SECTION, CONFIG_KEY, enabled);
+	config_set_int(cfg, CONFIG_SECTION, CONFIG_KEY_MODE, mode);
 	config_save_safe(cfg, "tmp", NULL);
 }
 
@@ -72,7 +89,7 @@ static void save_enabled(bool enabled)
  * Core logic
  * -------------------------------------------------------------------------- */
 
-static void apply_monitor_only(obs_source_t *source)
+static void apply_monitoring(obs_source_t *source)
 {
 	if (!source || !g_enabled)
 		return;
@@ -81,12 +98,16 @@ static void apply_monitor_only(obs_source_t *source)
 	if (!(caps & OBS_SOURCE_AUDIO))
 		return;
 
-	if (obs_source_get_monitoring_type(source) == OBS_MONITORING_TYPE_MONITOR_ONLY)
+	obs_monitoring_type target = (g_mode == 1) ? OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT
+						   : OBS_MONITORING_TYPE_MONITOR_ONLY;
+
+	if (obs_source_get_monitoring_type(source) == target)
 		return;
 
-	blog(LOG_INFO, "[" PLUGIN_NAME "] Setting '%s' -> Monitor Only (mute output)", obs_source_get_name(source));
+	blog(LOG_INFO, "[" PLUGIN_NAME "] Setting '%s' -> %s", obs_source_get_name(source),
+	     (target == OBS_MONITORING_TYPE_MONITOR_ONLY) ? "Monitor Only (mute output)" : "Monitor and Output");
 
-	obs_source_set_monitoring_type(source, OBS_MONITORING_TYPE_MONITOR_ONLY);
+	obs_source_set_monitoring_type(source, target);
 }
 
 /* --------------------------------------------------------------------------
@@ -98,37 +119,52 @@ public:
 	explicit AutoMonitorDialog(QWidget *parent = nullptr) : QDialog(parent)
 	{
 		setWindowTitle(PLUGIN_NAME);
-		setFixedSize(320, 120);
+		setFixedSize(360, 150);
 
 		auto *layout = new QVBoxLayout(this);
 		layout->setContentsMargins(16, 16, 16, 16);
-		layout->setSpacing(12);
+		layout->setSpacing(10);
 
-		m_checkbox = new QCheckBox("Automatically set new audio sources to\n"
-					   "\"Monitor Only (mute output)\"",
-					   this);
+		m_checkbox = new QCheckBox("Automatically set monitoring on new audio sources", this);
 		m_checkbox->setChecked(g_enabled);
 		layout->addWidget(m_checkbox);
+
+		/* Mode row */
+		auto *mode_layout = new QHBoxLayout();
+		auto *mode_label = new QLabel("Monitoring mode:", this);
+		m_combo = new QComboBox(this);
+		m_combo->addItem("Monitor Only (mute output)");
+		m_combo->addItem("Monitor and Output");
+		m_combo->setCurrentIndex(g_mode);
+		m_combo->setEnabled(g_enabled);
+		mode_layout->addWidget(mode_label);
+		mode_layout->addWidget(m_combo, 1);
+		layout->addLayout(mode_layout);
+
+		/* Disable combo when checkbox is unchecked */
+		connect(m_checkbox, &QCheckBox::toggled, m_combo, &QComboBox::setEnabled);
 
 		/* OK / Cancel buttons */
 		auto *btn_layout = new QHBoxLayout();
 		btn_layout->addStretch();
-
 		auto *ok = new QPushButton("OK", this);
 		auto *cancel = new QPushButton("Cancel", this);
 		ok->setDefault(true);
-
 		btn_layout->addWidget(ok);
 		btn_layout->addWidget(cancel);
 		layout->addLayout(btn_layout);
 
 		connect(ok, &QPushButton::clicked, this, [this]() {
-			bool new_state = m_checkbox->isChecked();
-			if (new_state != g_enabled) {
-				g_enabled = new_state;
-				save_enabled(g_enabled);
-				blog(LOG_INFO, "[" PLUGIN_NAME "] %s via settings dialog.",
-				     g_enabled ? "Enabled" : "Disabled");
+			bool new_enabled = m_checkbox->isChecked();
+			int new_mode = m_combo->currentIndex();
+
+			if (new_enabled != g_enabled || new_mode != g_mode) {
+				g_enabled = new_enabled;
+				g_mode = new_mode;
+				save_settings(g_enabled, g_mode);
+				blog(LOG_INFO, "[" PLUGIN_NAME "] Settings updated — %s, mode: %s",
+				     g_enabled ? "Enabled" : "Disabled",
+				     (g_mode == 1) ? "Monitor and Output" : "Monitor Only");
 			}
 			accept();
 		});
@@ -138,6 +174,7 @@ public:
 
 private:
 	QCheckBox *m_checkbox;
+	QComboBox *m_combo;
 };
 
 /* --------------------------------------------------------------------------
@@ -169,7 +206,7 @@ static void on_source_create(void *private_data, calldata_t *cd)
 	if (!calldata_get_ptr(cd, "source", &source) || !source)
 		return;
 
-	apply_monitor_only(source);
+	apply_monitoring(source);
 }
 
 /* --------------------------------------------------------------------------
@@ -183,7 +220,9 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 	switch (event) {
 	case OBS_FRONTEND_EVENT_FINISHED_LOADING:
 		g_enabled = load_enabled();
-		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s.", g_enabled ? "ENABLED" : "DISABLED");
+		g_mode = load_mode();
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s, mode: %s.",
+		     g_enabled ? "ENABLED" : "DISABLED", (g_mode == 1) ? "Monitor and Output" : "Monitor Only");
 		break;
 
 	default:
