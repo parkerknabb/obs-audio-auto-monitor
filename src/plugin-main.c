@@ -39,7 +39,11 @@ static bool g_enabled = true;
 
 static bool load_enabled(void)
 {
-	config_t *cfg = obs_frontend_get_global_config();
+	#if LIBOBS_API_MAJOR_VER >= 31
+        config_t *cfg = obs_frontend_get_app_config();
+	#else
+        config_t *cfg = obs_frontend_get_global_config();
+	#endif
 	if (!cfg)
 		return true;
 
@@ -49,7 +53,11 @@ static bool load_enabled(void)
 
 static void save_enabled(bool enabled)
 {
-	config_t *cfg = obs_frontend_get_global_config();
+	#if LIBOBS_API_MAJOR_VER >= 31
+        config_t *cfg = obs_frontend_get_app_config();
+	#else
+        config_t *cfg = obs_frontend_get_global_config();
+	#endif
 	if (!cfg)
 		return;
 
