@@ -93,13 +93,6 @@ static void apply_monitor_only(obs_source_t *source)
 				       OBS_MONITORING_TYPE_MONITOR_ONLY);
 }
 
-static bool enum_apply_monitor_only(void *param, obs_source_t *source)
-{
-	(void)param;
-	apply_monitor_only(source);
-	return true;
-}
-
 /* --------------------------------------------------------------------------
  * Settings dialog
  * -------------------------------------------------------------------------- */
@@ -144,13 +137,7 @@ public:
 				     "[" PLUGIN_NAME "] %s via settings dialog.",
 				     g_enabled ? "Enabled" : "Disabled");
 
-				if (g_enabled) {
-					blog(LOG_INFO,
-					     "[" PLUGIN_NAME "] Sweeping existing sources after re-enable.");
-					obs_enum_sources(
-						enum_apply_monitor_only,
-						nullptr);
-				}
+
 			}
 			accept();
 		});
@@ -210,17 +197,6 @@ static void on_frontend_event(enum obs_frontend_event event,
 		g_enabled = load_enabled();
 		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s.",
 		     g_enabled ? "ENABLED" : "DISABLED");
-
-		if (g_enabled)
-			obs_enum_sources(enum_apply_monitor_only, nullptr);
-		break;
-
-	case OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED:
-		if (g_enabled) {
-			blog(LOG_INFO,
-			     "[" PLUGIN_NAME "] Scene collection changed — re-applying Monitor Only.");
-			obs_enum_sources(enum_apply_monitor_only, nullptr);
-		}
 		break;
 
 	default:
