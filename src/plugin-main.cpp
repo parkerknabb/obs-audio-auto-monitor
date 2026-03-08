@@ -81,16 +81,12 @@ static void apply_monitor_only(obs_source_t *source)
 	if (!(caps & OBS_SOURCE_AUDIO))
 		return;
 
-	if (obs_source_get_monitoring_type(source) ==
-	    OBS_MONITORING_TYPE_MONITOR_ONLY)
+	if (obs_source_get_monitoring_type(source) == OBS_MONITORING_TYPE_MONITOR_ONLY)
 		return;
 
-	blog(LOG_INFO,
-	     "[" PLUGIN_NAME "] Setting '%s' -> Monitor Only (mute output)",
-	     obs_source_get_name(source));
+	blog(LOG_INFO, "[" PLUGIN_NAME "] Setting '%s' -> Monitor Only (mute output)", obs_source_get_name(source));
 
-	obs_source_set_monitoring_type(source,
-				       OBS_MONITORING_TYPE_MONITOR_ONLY);
+	obs_source_set_monitoring_type(source, OBS_MONITORING_TYPE_MONITOR_ONLY);
 }
 
 /* --------------------------------------------------------------------------
@@ -99,8 +95,7 @@ static void apply_monitor_only(obs_source_t *source)
 
 class AutoMonitorDialog : public QDialog {
 public:
-	explicit AutoMonitorDialog(QWidget *parent = nullptr)
-		: QDialog(parent)
+	explicit AutoMonitorDialog(QWidget *parent = nullptr) : QDialog(parent)
 	{
 		setWindowTitle(PLUGIN_NAME);
 		setFixedSize(320, 120);
@@ -109,10 +104,9 @@ public:
 		layout->setContentsMargins(16, 16, 16, 16);
 		layout->setSpacing(12);
 
-		m_checkbox = new QCheckBox(
-			"Automatically set new audio sources to\n"
-			"\"Monitor Only (mute output)\"",
-			this);
+		m_checkbox = new QCheckBox("Automatically set new audio sources to\n"
+					   "\"Monitor Only (mute output)\"",
+					   this);
 		m_checkbox->setChecked(g_enabled);
 		layout->addWidget(m_checkbox);
 
@@ -133,17 +127,13 @@ public:
 			if (new_state != g_enabled) {
 				g_enabled = new_state;
 				save_enabled(g_enabled);
-				blog(LOG_INFO,
-				     "[" PLUGIN_NAME "] %s via settings dialog.",
+				blog(LOG_INFO, "[" PLUGIN_NAME "] %s via settings dialog.",
 				     g_enabled ? "Enabled" : "Disabled");
-
-
 			}
 			accept();
 		});
 
-		connect(cancel, &QPushButton::clicked, this,
-			&QDialog::reject);
+		connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
 	}
 
 private:
@@ -158,8 +148,7 @@ static void on_tools_menu_click(void *private_data)
 {
 	(void)private_data;
 
-	auto *main_window =
-		static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	auto *main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
 
 	AutoMonitorDialog dialog(main_window);
 	dialog.exec();
@@ -187,16 +176,14 @@ static void on_source_create(void *private_data, calldata_t *cd)
  * Frontend event callback
  * -------------------------------------------------------------------------- */
 
-static void on_frontend_event(enum obs_frontend_event event,
-			      void *private_data)
+static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 {
 	(void)private_data;
 
 	switch (event) {
 	case OBS_FRONTEND_EVENT_FINISHED_LOADING:
 		g_enabled = load_enabled();
-		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s.",
-		     g_enabled ? "ENABLED" : "DISABLED");
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s.", g_enabled ? "ENABLED" : "DISABLED");
 		break;
 
 	default:
@@ -214,19 +201,15 @@ bool obs_module_load(void)
 
 	signal_handler_t *sh = obs_get_signal_handler();
 	if (sh) {
-		signal_handler_connect(sh, "source_create", on_source_create,
-				       nullptr);
-		blog(LOG_INFO,
-		     "[" PLUGIN_NAME "] Connected to source_create signal.");
+		signal_handler_connect(sh, "source_create", on_source_create, nullptr);
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Connected to source_create signal.");
 	} else {
-		blog(LOG_WARNING,
-		     "[" PLUGIN_NAME "] Could not get global signal handler.");
+		blog(LOG_WARNING, "[" PLUGIN_NAME "] Could not get global signal handler.");
 	}
 
 	obs_frontend_add_event_callback(on_frontend_event, nullptr);
 
-	obs_frontend_add_tools_menu_item(PLUGIN_NAME, on_tools_menu_click,
-					 nullptr);
+	obs_frontend_add_tools_menu_item(PLUGIN_NAME, on_tools_menu_click, nullptr);
 
 	blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded successfully.");
 	return true;
@@ -240,8 +223,7 @@ void obs_module_unload(void)
 
 	signal_handler_t *sh = obs_get_signal_handler();
 	if (sh)
-		signal_handler_disconnect(sh, "source_create", on_source_create,
-					  nullptr);
+		signal_handler_disconnect(sh, "source_create", on_source_create, nullptr);
 
 	blog(LOG_INFO, "[" PLUGIN_NAME "] Unloaded.");
 }
