@@ -30,9 +30,9 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("auto-monitor-only", "en-US")
 
-#define PLUGIN_NAME    "Auto Monitor Only"
-#define PLUGIN_VERSION "1.3.0"
-#define CONFIG_SECTION "AutoMonitorOnly"
+#define PLUGIN_NAME    "Auto Monitor Audio"
+#define PLUGIN_VERSION "1.1.0"
+#define CONFIG_SECTION "AutoMonitorAudio"
 #define CONFIG_KEY     "Enabled"
 #define CONFIG_KEY_MODE "Mode"
 
@@ -269,8 +269,7 @@ void obs_module_unload(void)
 
 const char *obs_module_description(void)
 {
-	return "Automatically sets all new audio sources to "
-	       "\"Monitor Only (mute output)\". "
+	return "Automatically sets the monitoring type on new audio sources. "
 	       "Configure via Tools -> " PLUGIN_NAME ".";
 }
 
