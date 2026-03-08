@@ -39,11 +39,11 @@ static bool g_enabled = true;
 
 static bool load_enabled(void)
 {
-	#if LIBOBS_API_MAJOR_VER >= 31
-        config_t *cfg = obs_frontend_get_app_config();
-	#else
-        config_t *cfg = obs_frontend_get_global_config();
-	#endif
+#if LIBOBS_API_MAJOR_VER >= 31
+	config_t *cfg = obs_frontend_get_app_config();
+#else
+	config_t *cfg = obs_frontend_get_global_config();
+#endif
 	if (!cfg)
 		return true;
 
@@ -53,11 +53,11 @@ static bool load_enabled(void)
 
 static void save_enabled(bool enabled)
 {
-	#if LIBOBS_API_MAJOR_VER >= 31
-        config_t *cfg = obs_frontend_get_app_config();
-	#else
-        config_t *cfg = obs_frontend_get_global_config();
-	#endif
+#if LIBOBS_API_MAJOR_VER >= 31
+	config_t *cfg = obs_frontend_get_app_config();
+#else
+	config_t *cfg = obs_frontend_get_global_config();
+#endif
 	if (!cfg)
 		return;
 
@@ -78,16 +78,12 @@ static void apply_monitor_only(obs_source_t *source)
 	if (!(caps & OBS_SOURCE_AUDIO))
 		return;
 
-	if (obs_source_get_monitoring_type(source) ==
-	    OBS_MONITORING_TYPE_MONITOR_ONLY)
+	if (obs_source_get_monitoring_type(source) == OBS_MONITORING_TYPE_MONITOR_ONLY)
 		return;
 
-	blog(LOG_INFO,
-	     "[" PLUGIN_NAME "] Setting '%s' -> Monitor Only (mute output)",
-	     obs_source_get_name(source));
+	blog(LOG_INFO, "[" PLUGIN_NAME "] Setting '%s' -> Monitor Only (mute output)", obs_source_get_name(source));
 
-	obs_source_set_monitoring_type(source,
-				       OBS_MONITORING_TYPE_MONITOR_ONLY);
+	obs_source_set_monitoring_type(source, OBS_MONITORING_TYPE_MONITOR_ONLY);
 }
 
 static bool enum_apply_monitor_only(void *param, obs_source_t *source)
@@ -115,12 +111,10 @@ static void on_tools_menu_click(void *private_data)
 	g_enabled = !g_enabled;
 	save_enabled(g_enabled);
 
-	blog(LOG_INFO, "[" PLUGIN_NAME "] %s via Tools menu.",
-	     g_enabled ? "Enabled" : "Disabled");
+	blog(LOG_INFO, "[" PLUGIN_NAME "] %s via Tools menu.", g_enabled ? "Enabled" : "Disabled");
 
 	if (g_enabled) {
-		blog(LOG_INFO,
-		     "[" PLUGIN_NAME "] Sweeping existing sources after re-enable.");
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Sweeping existing sources after re-enable.");
 		obs_enum_sources(enum_apply_monitor_only, NULL);
 	}
 }
@@ -147,17 +141,14 @@ static void on_source_create(void *private_data, calldata_t *cd)
  * Frontend event callback
  * -------------------------------------------------------------------------- */
 
-static void on_frontend_event(enum obs_frontend_event event,
-			      void *private_data)
+static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 {
 	(void)private_data;
 
 	switch (event) {
 	case OBS_FRONTEND_EVENT_FINISHED_LOADING:
 		g_enabled = load_enabled();
-		blog(LOG_INFO,
-		     "[" PLUGIN_NAME "] Loaded — feature is %s.",
-		     g_enabled ? "ENABLED" : "DISABLED");
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded — feature is %s.", g_enabled ? "ENABLED" : "DISABLED");
 
 		if (g_enabled)
 			obs_enum_sources(enum_apply_monitor_only, NULL);
@@ -165,8 +156,7 @@ static void on_frontend_event(enum obs_frontend_event event,
 
 	case OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED:
 		if (g_enabled) {
-			blog(LOG_INFO,
-			     "[" PLUGIN_NAME "] Scene collection changed — re-applying Monitor Only.");
+			blog(LOG_INFO, "[" PLUGIN_NAME "] Scene collection changed — re-applying Monitor Only.");
 			obs_enum_sources(enum_apply_monitor_only, NULL);
 		}
 		break;
@@ -186,19 +176,15 @@ bool obs_module_load(void)
 
 	signal_handler_t *sh = obs_get_signal_handler();
 	if (sh) {
-		signal_handler_connect(sh, "source_create",
-				       on_source_create, NULL);
-		blog(LOG_INFO,
-		     "[" PLUGIN_NAME "] Connected to source_create signal.");
+		signal_handler_connect(sh, "source_create", on_source_create, NULL);
+		blog(LOG_INFO, "[" PLUGIN_NAME "] Connected to source_create signal.");
 	} else {
-		blog(LOG_WARNING,
-		     "[" PLUGIN_NAME "] Could not get global signal handler.");
+		blog(LOG_WARNING, "[" PLUGIN_NAME "] Could not get global signal handler.");
 	}
 
 	obs_frontend_add_event_callback(on_frontend_event, NULL);
 
-	obs_frontend_add_tools_menu_item(PLUGIN_NAME " (Toggle)",
-					 on_tools_menu_click, NULL);
+	obs_frontend_add_tools_menu_item(PLUGIN_NAME " (Toggle)", on_tools_menu_click, NULL);
 
 	blog(LOG_INFO, "[" PLUGIN_NAME "] Loaded successfully.");
 	return true;
@@ -212,8 +198,7 @@ void obs_module_unload(void)
 
 	signal_handler_t *sh = obs_get_signal_handler();
 	if (sh)
-		signal_handler_disconnect(sh, "source_create",
-					  on_source_create, NULL);
+		signal_handler_disconnect(sh, "source_create", on_source_create, NULL);
 
 	blog(LOG_INFO, "[" PLUGIN_NAME "] Unloaded.");
 }
